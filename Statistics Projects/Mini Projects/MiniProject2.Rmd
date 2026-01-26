@@ -1,0 +1,351 @@
+---
+title: 'Mini Project #2'
+author: "Benny Frisella"
+date: "2024-09-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Exploratory Data Analysis
+wineData <- read.csv("wineData.txt", header = TRUE, sep = '\t')
+head(wineData)
+
+#check out main characteristics
+summary(wineData)
+
+#check regions
+regions <- table(wineData$Region)  #17 from region 1, 9 from 2, 12 from 3
+```
+
+```{r}
+#fit linear models of each predictor against response
+
+qualClarity <- lm(Quality ~ Clarity, data = wineData)
+qualAroma <- lm(Quality ~ Aroma, data = wineData)
+qualBody <- lm(Quality ~ Body, data = wineData)
+qualFlavor <- lm(Quality ~ Flavor, data = wineData)
+qualOakiness <- lm(Quality ~ Oakiness, data = wineData)
+qualRegion <- lm(Quality ~ as.factor(Region), data = wineData)
+
+```
+
+```{r}
+#evaluate F statistic to test model significance
+anova(qualClarity)
+print("")
+anova(qualAroma)
+print("")
+anova(qualBody)
+print("")
+anova(qualFlavor)
+print("")
+anova(qualOakiness)
+print("")
+anova(qualRegion)
+#Aroma, Body, Flavor, Region are all significant ***
+```
+
+```{r}
+#Region's interactions with the other signifcant predictors
+# note: * captures all effects, : captures interaction only
+
+regionAr <- lm(Quality ~ Aroma * Region, data = wineData)
+anova(regionAr)
+print("")
+regionBod <- lm(Quality ~ Body * Region, data = wineData)
+anova(regionBod)
+print("")
+regionFlav <- lm(Quality ~ Flavor * Region, data = wineData)
+anova(regionFlav)
+
+#Interaction Effects: The interaction terms were not significant, 
+#indicating that the influence of each predictor does not change based on the Region.
+```
+
+```{r}
+#Flavor's interactions with Aroma and Body
+flavorAr <- lm(Quality ~ Flavor * Aroma, data = wineData)
+anova(flavorAr)
+flavorBod <- lm(Quality ~ Body * Flavor, data = wineData)
+anova(flavorBod)
+```
+
+```{r}
+#lastly, check Aroma with Body
+bodyAr <- lm(Quality ~ Body * Aroma, data = wineData)
+anova(bodyAr)
+```
+```{r}
+library(ggplot2)
+
+#scatter plot for Aroma/Quality
+ggplot(wineData, aes(x = Aroma, y = Quality)) +
+  geom_jitter(width = 0.2, alpha = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +
+  labs(title = "Quality by Aroma", x = "Aroma", y = "Quality") +
+  theme_minimal()
+
+#scatter plot for Body/Quality
+ggplot(wineData, aes(x = Body, y = Quality)) +
+  geom_jitter(width = 0.2, alpha = 0.5) +  
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + 
+  labs(title = "Quality by Body", x = "Body", y = "Quality") +
+  theme_minimal()
+
+#scatter plot for Flavor/Quality
+ggplot(wineData, aes(x = Flavor, y = Quality)) +
+  geom_jitter(width = 0.2, alpha = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  labs(title = "Quality by Flavor", x = "Flavor", y = "Quality") +
+  theme_minimal()
+
+library(dplyr)
+
+#calculate mean Quality per Region
+meanQuality <- wineData %>%
+  group_by(Region) %>%
+  summarize(meanQuality = mean(Quality, na.rm = TRUE))
+
+#show organized mean lines
+mean_lines <- data.frame(
+  Region = c(1, 2, 3),  # Assuming there are 3 regions
+  mean_quality = mean_quality$mean_quality,
+  x_start = c(0.5, 1.5, 2.5),  #start of the line for each region
+  x_end = c(1.5, 2.5, 3.5)  #end of the line for each region
+)
+
+#scatter plot for Region/Quality with means
+ggplot(wineData, aes(x = as.factor(Region), y = Quality)) +
+  geom_jitter(width = 0.2, alpha = 0.5) +  # Add jitter to points for visibility
+  geom_smooth(method = "lm", se = FALSE, color = "green") +  # Add linear model fit
+  geom_segment(data = mean_lines, 
+               aes(x = x_start, xend = x_end, y = mean_quality, yend = mean_quality), 
+               linetype = "dashed", color = "blue", size = 1) +  # Add horizontal lines for mean
+  labs(title = "Quality by Region", x = "Region", y = "Quality") +
+  theme_minimal()
+
+```
+
+```{r}
+#fit a lm using all predictors
+
+allPredictorModel <- lm(Quality ~ Clarity + Aroma + Body + Flavor + Oakiness + as.factor(Region), data = wineData)
+anova(allPredictorModel)
+
+```
+
+```{r}
+#remove Clarity
+latestModel <- lm(Quality ~ Aroma + Body + Flavor + Oakiness + as.factor(Region), data = wineData)
+anova(allPredictorModel)
+
+```
+```{r}
+#extract coefficients
+coefficients <- coef(latestModel)
+
+#set coefficients
+intercept <- coefficients[1]
+betaAroma <- coefficients["Aroma"]
+betaBody <- coefficients["Body"]
+betaFlavor <- coefficients["Flavor"]
+betaOakiness <- coefficients["Oakiness"]
+betaRegion2 <- coefficients["as.factor(Region)2"]
+betaRegion3 <- coefficients["as.factor(Region)3"]
+
+#format as string
+equation <- paste0("Quality = ", round(intercept, 4), " + ", 
+                   round(beta_aroma, 4), " * Aroma + ", 
+                   round(beta_body, 4), " * Body + ", 
+                   round(beta_flavor, 4), " * Flavor + ", 
+                   round(beta_oakiness, 4), " * Oakiness + ", 
+                   round(beta_region2, 4), " * Region2 + ", 
+                   round(beta_region3, 4), " * Region3")
+
+print(equation)
+
+```
+
+```{r}
+#mean values of predictors
+meanAroma <- mean(wineData$Aroma) 
+meanBody <- mean(wineData$Body)
+meanFlavor <- mean(wineData$Flavor) 
+meanOakiness <- mean(wineData$Oakiness)
+
+#create new data frame for prediction
+newData <- data.frame(
+  Aroma = meanAroma,
+  Body = meanBody,
+  Flavor = meanFlavor,
+  Oakiness = meanOakiness,
+  Region = factor("1", levels = c("1", "2", "3"))  #region 1 as the baseline
+)
+
+#make predictions with confidence interval
+confidence <- predict(latestModel, newdata = newData, interval = "confidence", level = 0.95)
+confidence
+
+#make predictions with prediction interval
+predictions <- predict(latestModel, newdata = newData, interval = "prediction", level = 0.95)
+predictions
+
+
+```
+
+```{r}
+#                 1d) ASSUMPTION Validations FOR LATEST LINEAR MODEL
+fittedLatestModel <- fitted(latestModel)
+residuals <- resid(latestModel)
+
+ #residual plot
+ plot(fittedLatestModel, residuals)
+ abline(h = 0)
+ 
+ #QQ plot
+ qqnorm(residuals)
+ 
+ #time series plot of residuals
+ plot(residuals, type="l")
+ abline(h=0)
+ 
+ print("Residual Plot: Make sure there isn't any patterns
+
+QQ Plot: Points should lie along the reference line. Deviations from this line, especially at the ends, indicate departures from normality.
+
+Time Series Plot of Residuals: Residuals should hover around 0 without significant trends or patterns. Patterns may indicate problems with the model specification.")
+
+```
+
+```{r}
+#                                              QUESTION 2
+diabetes <- read.csv("diabetes.csv")
+summary(diabetes)
+```
+
+```{r}
+#find missing values (they were set to zero) but it's impossible for these to be zero
+sum(diabetes$Glucose == 0)        # 13
+sum(diabetes$BloodPressure == 0)  # 90
+sum(diabetes$SkinThickness == 0)  # 573
+sum(diabetes$BMI == 0)        # 28
+sum(diabetes$Age == 0)    # 0
+sum(diabetes$Insulin == 0)     # 956
+sum(diabetes$DiabetesPedigreeFunction == 0)   # 0
+
+which(diabetes$Pregnancies == max(diabetes$Pregnancies))     # 3 results
+```
+
+```{r}
+#perform LDA, using MASS to save space
+library(MASS)
+
+#fit LDA model using all variables to predict
+LDA <- lda(Outcome ~ ., data = diabetes)
+
+#predict
+predictions <- predict(LDA, diabetes)
+
+#check
+#predictions$class
+
+#create confusion matrix (shorthand)
+table(Predicted = predictions$class, Actual = diabetes$Outcome)
+
+#classify based on a 0.5 cutoff
+predictedClasses <- ifelse(predictions$posterior >= 0.5, 1, 0)
+
+```
+```{r}
+library(pROC)
+
+LDA.ROC <- roc(diabetes$Outcome, predictions$posterior[, 2])
+
+#plot Reciever Operating Characteristic
+plot(LDA.ROC, col = "blue", main = "LDA ROC Curve")
+
+#print Area Under Curve
+AUC.LDA <- auc(LDA.ROC)
+AUC.LDA
+
+text(0.4, 0.2, paste("AUC =", round(AUC.LDA, 4)), col = "blue", cex = 1.2)
+
+```
+```{r}
+#fit QDA model using all variables to predict
+QDA <- qda(Outcome ~ ., data = diabetes)
+
+#predict
+predictions2 <- predict(QDA, diabetes)
+
+#check
+#predictions2$class
+
+#create confusion matrix (shorthand)
+table(Predicted = predictions2$class, Actual = diabetes$Outcome)
+
+#classify based on a 0.5 cutoff
+predictedClasses2 <- ifelse(predictions2$posterior >= 0.5, 1, 0)
+```
+```{r}
+QDA.ROC <- roc(diabetes$Outcome, predictions2$posterior[, 2])
+
+#plot Receiver Operating Characteristic
+plot(QDA.ROC, col = "red", main = "QDA ROC Curve")
+
+#print Area Under Curve
+AUC.QDA <- auc(QDA.ROC)
+AUC.QDA
+
+text(0.4, 0.2, paste("AUC QDA =", round(AUC.QDA, 4)), col = "red", cex = 1.2)
+
+```
+
+```{r}
+#test other posterior probabilities for QDA and LDA
+predictedClasses <- ifelse(predictions$posterior[, 2] >= 0.33, 1, 0)
+
+# Classify based on a 0.5 cutoff (or other cutoff like 0.33)
+predictedClasses2 <- ifelse(predictions2$posterior[, 2] >= 0.25, 1, 0)
+
+#create confusion matrix (shorthand)
+confusionQDA <- table(Predicted = predictedClasses2, Actual = diabetes$Outcome)
+
+#create confusion matrix (shorthand)
+confusionLDA <- table(Predicted = predictedClasses, Actual = diabetes$Outcome)
+
+```
+
+```{r}
+#calculate metrics
+confusionMetrics <- function(confusionMatrix) 
+{
+  TP <- confusionMatrix[2, 2]  #true Positives
+  TN <- confusionMatrix[1, 1]  #true Negatives
+  FP <- confusionMatrix[1, 2]  #false Positives
+  FN <- confusionMmatrix[2, 1]  #false Negatives
+  
+  accuracy <- (TP + TN) / sum(confusionMatrix)
+  precision <- TP / (TP + FP)
+  recall <- TP / (TP + FN)
+  specificity <- TN / (TN + FP)
+  f1_score <- 2 * (precision * recall) / (precision + recall)
+
+  return(c(Accuracy = accuracy, Precision = precision, Recall = recall, Specificity = specificity, F1_Score = f1_score))
+}
+
+#QDA
+metrics_QDA <- calculate_metrics(confusionQDA)
+print("Metrics for QDA:")
+print(metrics_QDA)
+
+#LDA
+metrics_LDA <- calculate_metrics(confusionLDA)
+print("Metrics for LDA:")
+print(metrics_LDA)
+
+```

@@ -1,0 +1,209 @@
+---
+title: "Mini Project 3"
+author: "Benny Frisella"
+date: "2024-10-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(root.dir = "C:/Users/benny/Documents/University of Texas @ Dallas/Statistical Learning/Datasets")
+```
+
+##1. Consider the diabetes dataset from Mini Project 2. Use all predictors for all the models considered
+##for this problem.
+
+(a) Fit a logistic regression model using all predictors in the data. Provide its error rate, sensitivity,
+and specificity based on training data.
+```{r}
+#(a)
+
+setwd("~/University of Texas @ Dallas/Statistical Learning/Datasets")
+diabetes <- read.csv("diabetes.csv")
+# summary(diabetes) -> medium-sized set
+# colnames(diabetes)
+logReg <- glm(Outcome ~ Pregnancies.. + Glucose.. + BloodPressure.. + SkinThickness.. + Insulin.. + BMI.. + DiabetesPedigreeFunction.. + Age.., family = binomial, data = diabetes)
+
+#Randomly split data into: 70% training and 30% prediction sets
+#set.seed(8)
+sampleSize <- floor(0.7 * nrow(diabetes))
+trainIndex <- sample(seq(nrow(diabetes)), size = sampleSize)
+
+#include randomly chosen indices for training
+trainData <- diabetes[trainIndex,]
+
+#include what wasn't chosen in training set into test set
+testData <- diabetes[-trainIndex,]
+
+
+
+#Build model on training set
+fit <- glm(Outcome ~ Pregnancies.. + Glucose.. + BloodPressure.. 
+           + SkinThickness.. + Insulin.. + BMI.. 
+           + DiabetesPedigreeFunction.. + Age.., 
+           family = binomial, data = trainData)
+
+summary(fit)
+
+#estimated probabilities for test data
+logReg.prob <- predict(fit, testData, type = "response")
+
+#predicted classes (using 0.5 cutoff)
+logReg.pred <- ifelse(logReg.prob >= 0.5, 1, 0)
+
+#test error rate
+1 - mean(logReg.pred == testData[, "Outcome"])
+
+
+
+# Confusion matrix and (sensitivity, specificity)
+# `+' = 1, `-' = 0
+
+table(logReg.pred, testData[, "Outcome"])
+
+errorRate <- (37 + 92) / (353 + 118 + 37 + 92)
+sensitivity <- 118 / (118 + 92)
+specificity <- 353 / (353 + 37)
+
+cat("\nError rate: (FP + FN) / (TP + TN + FP + FN) =", errorRate)
+cat("\nSensitivity: TP / (TP + FN)", sensitivity)
+cat("\nSpecificity: TN / (TN + FP)", specificity)
+
+```
+(b) Write your own code to estimate the test error rate of the model in (a) using LOOCV
+
+```{r}
+#(b)
+
+#observations
+n <- nrow(diabetes)
+
+squaredErrorsLoocv <- numeric(n)
+
+#LOOCV
+for (i in 1:n) 
+{
+  #create training/test sets
+  trainData <- diabetes[-i, ]
+  testData <- diabetes[i, , drop = FALSE]
+  
+  #train using logistic regression
+  LOOCV <- glm(Outcome ~ Pregnancies.. + Glucose.. + BloodPressure.. 
+                     + SkinThickness.. + Insulin.. + BMI.. 
+                     + DiabetesPedigreeFunction.. + Age..,
+                     data = train_data, family = binomial)
+  
+  #make predictions for the i-th test case
+  prediction <- predict(LOOCV, newdata = testData, type = "response")
+  
+  #square the difference, store
+  actualOutcomes <- testData$Outcome
+  squaredErrorsLoocv[i] <- (prediction - actualOutcomes) ^ 2
+}
+
+#Mean Squared Error for LOOCV
+LOOCV_MSE <- mean(squaredErrorsLoocv)
+
+LOOCV_MSE
+
+```
+
+```{r}
+#(c)
+
+library(boot)
+
+#Build glm model on entire dataset
+model <- glm(Outcome ~ Pregnancies.. + Glucose.. 
+             + BloodPressure.. + SkinThickness.. + Insulin.. 
+             + BMI.. + DiabetesPedigreeFunction.. + Age.., 
+             family = binomial, data = diabetes)
+
+#k-fold LOOCV special case
+KFoldsLOOCV <- cv.glm(diabetes, model, K = n)
+
+KFoldsLOOCV
+
+```
+
+```{r}
+?cv.glm
+```
+
+```{r}
+# k = 10 folds
+KFolds10 <- cv.glm(diabetes, model, K = 10)
+
+KFolds10
+```
+2. Consider the oxygen saturation data stored in oxygen_saturation.txt file. The data consist of
+measurements of percent saturation of hemoglobin with oxygen in 72 adults, obtained using an oxygen saturation monitor (OSM, method 1) and a pulse oximetry screener (POS, method 2). You can read
+about oxygen saturation on Wikipedia, https://en.wikipedia.org/wiki/Oxygen_saturation_
+(medicine). We are primarily interested in evaluating agreement between the two methods for
+measuring oxygen saturation.
+
+(a) Let Y1 and Y2 denote the population of observations of methods 1 and 2, respectively, and
+D = Y1 − Y2 denote their difference. Let theta be the total deviation index (TDI) between the two
+methods. For a given large probability p, it is defined as the pth quantile of |D|. Here we will
+take p = 0.90. Argue that smaller values for theta imply better agreement.
+```{r}
+#(a)
+
+setwd("~/University of Texas @ Dallas/Statistical Learning/Datasets")
+oxygenSats <- read.csv("oxygenSaturation.txt", sep = "\t", header = TRUE)
+
+oxygenSats$D <- abs(oxygenSats$pos - oxygenSats$osm)
+
+hist(oxygenSats$D, main = "Total Deviation Index Distribution", xlab = "Differences Between POS and OSM")
+```
+(b) Provide a point estimate theta_hat of theta. (Tip: If the population parameter is a quantile, what should be
+its natural estimator?) Write your own code to compute (nonparametric) bootstrap estimates
+of bias and standard error of theta_hat, and a 95% upper confidence bound for theta computed using the
+percentile method. Interpret the results.
+```{r}
+#(b)
+
+#set.seed(8)
+
+#point-estimation
+thetaHat <- quantile(oxygenSats$D, 0.9)
+
+#   Bootstrap NonParametric   #
+B <- 1000  #number of samples
+bootstrapEstimates <- numeric(B)
+
+for (b in 1:B) 
+{
+  bootstrapSample <- sample(oxygenSats$D, replace = TRUE)
+  bootstrapEstimates[b] <- quantile(bootstrapSample, 0.9)
+}
+
+#bias
+bias <- mean(bootstrapEstimates) - thetaHat
+
+#standard error
+sdError <- sd(bootstrapEstimates)
+
+# 95% upper confidence bound
+upperBound <- quantile(bootstrapEstimates, 0.95)
+
+cat("\nPoint estimate (theta_hat):", thetaHat, "\n")
+cat("Bias:", bias, "\n")
+cat("Standard Error:", sdError, "\n")
+cat("95% Upper Confidence Bound:", upperBound, "\n")
+```
+(c) Repeat the computation in (d) using boot package in R, or check bootstrap function from the
+SciPy library ( scipy.stats.bootstrap) in Python, and compare your results.
+```{r}
+#(c)
+library(boot)
+
+statistic <- function(data, indices) 
+{
+  quantile(abs(data[indices, 1] - data[indices, 2]), 0.9)
+}
+
+bootstrap <- boot(oxygenSats, statistic, R = 1000)
+
+bootstrap
+```
+

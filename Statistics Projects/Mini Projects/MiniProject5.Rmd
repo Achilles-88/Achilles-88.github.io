@@ -1,0 +1,346 @@
+---
+title: "Mini Project 5"
+author: "Benny Frisella"
+date: "2024-11-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("ISLR2")
+library(pls)
+
+##       Question 1       ##
+
+# (b)
+
+Hitters <- na.omit(Hitters)
+
+summary(Hitters)
+
+#?pcr
+
+#unsupervised, without Salary
+unsuper_Hitters <- subset(Hitters, select = -19)
+
+#convert 3 columns to categorical
+unsuper_Hitters$League <- as.factor(unsuper_Hitters$League)
+
+unsuper_Hitters$Division <- as.factor(unsuper_Hitters$Division)
+
+unsuper_Hitters$NewLeague <- as.factor(unsuper_Hitters$NewLeague)
+
+str(unsuper_Hitters)
+
+#extract numeric first
+numeric <- sapply(unsuper_Hitters, is.numeric)
+numeric_data <- unsuper_Hitters[, numeric]
+
+#standardize, center data. 
+numeric_data <- scale(numeric_data)
+
+#extract categorical, create dummys
+categorical_data <- unsuper_Hitters[, sapply(unsuper_Hitters, is.factor)]
+
+#exclude intercept column
+dummys <- model.matrix(~ ., data = categorical_data)[,-1]
+
+#join numeric and non-numeric
+unsuper_Hitters_standard <- cbind(numeric_data, dummys)
+
+str(unsuper_Hitters_standard)
+
+#PCA
+PCA <- prcomp(unsuper_Hitters_standard, center = TRUE, scale. = TRUE)
+
+summary(PCA)
+
+#scree
+plot(PCA, type = "l", main = "Scree Plot")
+```
+
+```{r}
+
+library(ggbiplot)
+
+#?ggbiplot
+
+# (c)
+#get loadings/rotation matrix
+loadings <- PCA$rotation[, 1:2]
+
+#get standard deviations of the PCs
+std_devs <- PCA$sdev[1:2]
+
+#correlations: Loadings scaled by PC standard deviations
+correlations <- loadings * std_devs
+
+#display correlations in a table
+cor_table <- as.data.frame(correlations)
+colnames(cor_table) <- c("PC1", "PC2")
+print(cor_table)
+
+#create the biplot and zoom in for presentability
+ggbiplot(PCA, 
+         circle = TRUE, 
+         labels = NULL, 
+         varname.adjust = , 
+         varname.abbrev = TRUE) +
+  theme_minimal() +
+  ggtitle("Magnified Biplot of PC1 and PC2") +
+  geom_point(aes(color = 'blue'), size = 0.75, alpha = 0.75) +
+  scale_color_manual(values = c("blue")) +
+  theme(legend.position = "none") +
+  xlim(-1.5, 1.5) +  #zoom x
+  ylim(-1.5, 1.5)    #Zoom y
+```
+
+```{r}
+
+#(C) continued...
+
+#get the variable loadings (rotation)
+var_loadings <- as.data.frame(PCA$rotation)
+
+#create quadrant column
+var_loadings$quadrant <- with(var_loadings, 
+                              ifelse(PC1 > 0 & PC2 > 0, "Quadrant 1", 
+                              ifelse(PC1 < 0 & PC2 > 0, "Quadrant 2", 
+                              ifelse(PC1 < 0 & PC2 < 0, "Quadrant 3", "Quadrant 4"))))
+
+#list variables by quadrant
+quadrant_list <- split(rownames(var_loadings), var_loadings$quadrant)
+
+#find the maximum length of the lists
+max_len <- max(sapply(quadrant_list, length))
+
+#pad shorter lists with NA
+quadrant_list_padded <- lapply(quadrant_list, function(x) 
+{
+  length(x) <- max_len  # Pad with NAs
+  return(x)
+})
+
+#create a table
+quadrant_df <- data.frame(
+  `Quadrant 1` = quadrant_list_padded$`Quadrant 1`,
+  `Quadrant 2` = quadrant_list_padded$`Quadrant 2`,
+  `Quadrant 3` = quadrant_list_padded$`Quadrant 3`,
+  `Quadrant 4` = quadrant_list_padded$`Quadrant 4`
+)
+
+print(quadrant_df)
+
+
+```
+
+```{r}
+##       Question 2       ##
+
+
+
+#(a) log(Salary) as response, all predictors, linear regression, get MSE
+
+Hitters$Salary <- log(Hitters$Salary)
+
+log_Salary_Hitters <- lm(Salary ~ ., data = Hitters)
+
+#predict
+predictions <- predict(log_Salary_Hitters, newdata = Hitters)
+
+#grab differences
+squared_errors <- (Hitters$Salary - predictions)^2
+
+#get MSE
+test.mse.lm <- mean(squared_errors)
+
+print(paste("Test MSE:", test.mse.lm))
+
+```
+
+```{r}
+#(b) log(Salary) as response, all predictors, Principle Component Regression w/ M from LOOCV, get MSE
+#?pcr
+
+set.seed(1)
+
+#PCR using LOOCV to find optimal M
+pcr.fit <- pcr(Salary ~ ., data = Hitters, scale = TRUE, validation = "LOO")
+
+
+#view
+summary(pcr.fit)
+
+MSEP(pcr.fit)
+sqrt(MSEP(pcr.fit)$val[1, 1,])
+which.min(MSEP(pcr.fit)$val[1, 1,])
+
+
+#plot the cross-validation test MSE estimates 
+validationplot(pcr.fit, val.type = "MSEP")
+
+#FOUND lowest adjusted CV at M = 14***
+
+#fit PCR model using M
+optimal.pcr <- pcr(Salary ~ ., data = Hitters, scale = TRUE, ncomp = 14)
+
+summary(optimal.pcr)
+
+#get new predictions
+predictions.pcr <- predict(optimal.pcr, newdata = Hitters, ncomp = 14)
+
+#get new MSE
+test.mse.pcr <- mean((Hitters$Salary - predictions.pcr)^2)
+print(paste("Test MSE for PCR:", test.mse.pcr))
+
+#use all data for predictions
+
+
+```
+
+```{r}
+#(c) log(Salary) as response, all predictors, PLS w/ M from LOOCV, get MSE
+set.seed(1)
+pls.fit <- plsr(Salary ~ ., data = Hitters, scale = TRUE, validation = "LOO")
+
+summary(pls.fit)
+
+MSEP(pls.fit)
+sqrt(MSEP(pls.fit)$val[1, 1,])
+
+optimal_m <- which.min(MSEP(pls.fit)$val[1, 1,])
+
+#plot the cross-validation test MSE estimates 
+validationplot(pcr.fit, val.type = "MSEP")
+
+#at M = 13, 
+#%variance increase stabilizes future components see decreasing marginal returns***
+final.pls.fit <- plsr(Salary ~., data = Hitters, scale = TRUE, ncomp = 13)
+
+#predict
+predictions.pls <- predict(final.pls.fit, newdata = Hitters)
+
+#get MSE
+test.mse.pls <- mean((Hitters$Salary - predictions.pls)^2)
+print(paste("Test MSE for PLS:", test.mse.pls))
+
+```
+
+```{r}
+#(d) log(Salary) as response, all predictors, Ridge Regression w/ pp from LOOCV, get MSE
+library(glmnet)
+
+y <- Hitters$Salary
+
+#create design matrix
+x <- model.matrix(Salary ~ ., Hitters)[, -1]
+
+
+#fit ridge regression using LOOCV to find the optimal lambda
+ridge.mod <- cv.glmnet(x, y, alpha = 0, type.measure = "mse", nfolds = nrow(x))
+
+#find optimal lambda
+optimal_lambda <- ridge.mod$lambda.min
+
+optimal_lambda
+
+#optimal lambda at 0.009543091***
+
+#fit the ridge regression model using the optimal lambda
+final.ridge <- glmnet(x, y, alpha = 0, lambda = optimal_lambda)
+
+#predict
+ridge.predictions <- predict(final.ridge, s = optimal_lambda, newx = x)
+
+#compute the test MSE
+test.mse.ridge <- mean((ridge.predictions - y)^2)
+
+#print the test MSE
+cat("Test MSE for Ridge Regression:", test.mse.ridge)
+
+```
+
+```{r}
+#(e) compare models
+model_names <- c("Linear Regression", "PCR", "PLS", "Ridge Regression")
+test_mse <- c(test.mse.lm, test.mse.pcr, test.mse.pls, test.mse.ridge)
+
+#gather
+results_table <- data.frame(Model = model_names, Test_MSE = test_mse)
+
+#test MSE in ascending order
+results_table <- results_table[order(results_table$Test_MSE), ]
+
+
+print(results_table)
+
+#Linear Regression wins
+
+
+```
+
+```{r}
+##       Question 3       ##
+
+
+
+#(a) log(Salary) as response, all predictors, which predictor is the most important?
+#this was done in question 2 (a), reusing...
+
+summary(log_Salary_Hitters)
+
+
+
+```
+
+```{r}
+#(b) fit a natural cubie spline using Hits** or Walks**, use LOOCV for optimal knots,
+#summarize and get test MSE
+
+library(splines)
+
+#Hits had the 2nd lowest p-value of 0.00503**, walks was the lowest with 0.00229**
+#important_predictor <- "Hits"
+important_predictor <- "Walks"
+
+#use LOOCV MSE for natural cubic splines
+loocv_spline <- function(k) 
+{
+  #fit a natural spline
+  spline_model <- lm(Salary ~ ns(Hitters[[important_predictor]], df = k), data = Hitters)
+  
+  # Leave-One-Out Cross-Validation
+  loocv_mse <- mean((Hitters$Salary - predict(spline_model, newdata = Hitters))^2)
+  return(loocv_mse)
+}
+
+#test different values for the degrees of freedom (number of knots)
+k_values <- 3:10  #possible knots
+mse_values <- sapply(k_values, loocv_spline)
+
+#find optimal number of knots
+optimal_k <- k_values[which.min(mse_values)]
+cat("Optimal number of knots:", optimal_k, "\n")
+
+#fit a model with the optimal number of knots
+best_spline_model <- lm(Salary ~ ns(Hitters[[important_predictor]], df = optimal_k), data = Hitters)
+
+test_mse <- min(mse_values)
+cat("Test MSE for the best natural spline model:", test_mse, "\n")
+
+```
+
+
+```{r}
+#visualize
+plot(k_values, mse_values, type = "b", pch = 7, col = "dark green", 
+     xlab = "Knots", 
+     ylab = "Test MSE", 
+     main = "Optimal Knots in Cubic Spline",
+     lwd = 2)
+
+```
+

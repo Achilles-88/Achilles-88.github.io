@@ -1,0 +1,422 @@
+---
+title: "Mini Project 6"
+author: "Benny Frisella"
+date: "2024-12-07"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+**1. Consider the Hitters dataset from the previous project. It consists of 20 variables measured on
+263 major league baseball players (after removing those with missing data). Take log(Salary) as
+response (due to skewness in Salary) and the remaining 19 variables as predictors. All data will
+be taken as training data. For all the models below, use leave-one-out cross-validation (LOOCV) to
+compute the estimated test MSE.
+
+
+(a) Fit a tree to the data. Summarize the results. Unless the number of terminal nodes is large,
+display the tree graphically and explicitly describe the regions corresponding to the terminal
+nodes that provide a partition of the predictor space (i.e., provide expressions for the regions
+R1, . . . , RJ ). Report its estimated test MSE.
+
+```{r}
+library(ISLR)
+library(tree)
+
+#?tree
+
+##       Question 1       ##
+
+# (a)
+
+#omit NA
+Hitters <- na.omit(Hitters)
+
+summary(Hitters)
+
+#convert categorical columns to factor
+categorical <- which(sapply(Hitters, is.character))
+
+Hitters[categorical] <- lapply(Hitters[categorical], as.factor)
+
+Hitters.formula <- log(Salary) ~ .
+
+#str(Hitters)
+
+#create log() Regression Tree #
+tree.Hitters <- tree(log(Hitters$Salary) ~ ., Hitters)
+
+summary(tree.Hitters)
+
+#plot
+plot(tree.Hitters)
+text(tree.Hitters, pretty = 0)
+
+#use LOOCV for test MSE
+LOOCV.tree <- cv.tree(tree.Hitters, K = nrow(Hitters))
+tree.MSE <- mean(LOOCV.tree$dev / length(Hitters$Salary))  #average MSE
+
+tree.MSE
+
+
+```
+
+```{r}
+
+# (b)
+
+#try cost complexity pruning by LOOCV
+which.min(LOOCV.tree$size)
+
+#plot estimated test error
+plot(LOOCV.tree$size, LOOCV.tree$dev, type = "b", main = "Cost Complexity Pruning",
+     ylab = "test error", xlab = "Size")
+     mtext("(Using LOOCV)", side = 4, line = 1, cex = 1)
+
+prune.salary <- prune.tree(tree.Hitters, best = 8)
+
+plot(prune.salary)
+text(prune.salary, pretty = 0)
+
+#use LOOCV for test MSE
+LOOCV.tree <- cv.tree(prune.salary, K = nrow(Hitters))
+prune.MSE <- mean(LOOCV.tree$dev / length(Hitters$Salary))  #average MSE
+
+prune.MSE
+
+```
+
+```{r}
+
+# (c)
+
+library(randomForest)
+library(caret)
+
+#bagging model w/ B = 1000 trees
+bagging.model <- randomForest(log(Salary) ~ ., data = Hitters, ntree = 1000, mtry = ncol(Hitters) - 1)
+
+bagging.model
+
+#get test MSE
+testMSE <- bagging.model$mse[1000]  #get value for the last tree
+cat("Bagging Test MSE:", testMSE, "\n")
+
+#get important predictors
+important.values <- importance(bagging.model)
+print(important.values)
+
+#plot
+varImpPlot(bagging.model, main = "Bagging")
+
+#Bagging with LOOCV
+bag_model <- train(log(Salary) ~ ., data = Hitters, method = "treebag", trControl = ctrl)
+
+print(bag_model) #rquared = 71%
+
+#get predictions
+predictions_bag <- bag_model$pred$pred
+
+#get actual values
+actual_bag <- bag_model$pred$obs
+
+#get MSE
+mse_bag <- mean((predictions_bag - actual_bag)^2)
+print(mse_bag)
+
+```
+
+```{r}
+
+# (d)
+
+#random forest with m ≈ p/3 (default)
+randForest.model <- randomForest(log(Salary) ~ ., data = Hitters, ntree = 1000)
+
+# Check Random Forest results
+print(randForest.model)
+
+# Estimated Test MSE (Out-of-Bag Error)
+randForest.model$mse[1000]
+
+#plot
+varImpPlot(randForest.model, main = "Random Forest")
+
+
+
+#prep
+ctrl <- trainControl(method = "LOOCV")
+
+#Random Forest with LOOCV
+rf_model <- train(log(Salary) ~ ., data = Hitters, method = "rf", trControl = ctrl)
+
+#get predictions
+predictions <- rf_model$pred$pred
+
+#get actual values
+actual <- rf_model$pred$obs
+
+#get MSE
+mse_rand <- mean((predictions - actual)^2)
+print(mse_rand)
+
+
+
+```
+
+
+```{r}
+#combine
+layout(matrix(c(1, 2), nrow = 1, ncol = 2))
+
+varImpPlot(bagging.model, main = "Bagging")
+varImpPlot(randForest.model, main = "Random Forest")
+
+```
+
+```{r}
+
+# (e)
+
+library(gbm)
+
+#fit boosting with LOOCV
+boosting.model <- train(log(Salary) ~ ., data = Hitters, 
+                        method = "gbm", trControl = trainControl("LOOCV"),
+                        tuneGrid = expand.grid(interaction.depth = 1,
+                                               n.trees = 1000, 
+                                               shrinkage = 0.01, #lambda
+                                               n.minobsinnode = 10),
+                        verbose = FALSE)
+
+#relative influence
+summary(boosting.model)
+
+#see
+boosting.model$results
+
+#get MSE
+boostMSE <- boosting.model$results$RMSE^2  # RMSE squared gives MSE
+print(boostMSE)
+
+
+```
+
+```{r}
+
+# (f)
+
+#create test MSE table
+model_comparison <- data.frame(
+  Model = c("Random Forest", "Boosting", "Bagging", "Un-Pruned Tree", "Pruned Tree"),
+  TestMSE = c(mse_rand, boostMSE, mse_bag, tree.MSE, prune.MSE)
+)
+
+# Print the comparison table
+print(model_comparison)
+
+```
+
+```{r}
+### Question 2 ###
+
+# (a)
+setwd("~/University of Texas @ Dallas/Statistical Learning/Datasets")
+
+#prep
+diabetes <- read.csv("diabetes.csv")
+
+#factor needed
+diabetes$Outcome <- as.factor(diabetes$Outcome)
+
+#level error fix
+levels(diabetes$Outcome) <- c("Class0", "Class1")
+
+formula <- Outcome ~ .
+
+#10-fold control
+ctrl <- trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+#fit SVC
+svc_model <- train(formula, data = diabetes, method = "svmLinear", trControl = ctrl, metric = "ROC",
+                   tuneLength = 10)
+svc_model
+
+#test error
+svc_pred <- predict(svc_model, diabetes)
+svc_error <- mean(svc_pred != diabetes$Outcome)
+cat("SVC Test Error Rate:", svc_error, "\n")
+
+#tune cost
+
+#grid of cost values for tuning
+cost_grid <- expand.grid(C = seq(0.001, 0.5, by = 0.005)) #CHANGE THIS, BEST = 0.011
+
+svc_model <- train(formula, data = diabetes, method = "svmLinear", trControl = ctrl, 
+  tuneGrid = cost_grid,
+  metric = "ROC")
+
+#find best model
+print(svc_model)
+
+#get cost
+best_cost <- svc_model$bestTune$C
+cat("Best cost parameter:", best_cost, "\n")
+
+#use cost
+tuned_grid <- expand.grid(C = 6.501)
+
+#train again
+svm_model <- train(Outcome ~ ., data = diabetes, method = "svmLinear", trControl = ctrl, 
+                   tuneGrid = tuned_grid)
+
+print(svm_model)
+
+```
+
+```{r}
+# (b)
+
+#SVM
+set.seed(123)
+poly_svm_model <- train(Outcome ~ ., data = diabetes, method = "svmPoly",trControl = ctrl,
+  tuneGrid = expand.grid(degree = 2, scale = seq(0.1, 1, length = 5), C = seq(0.01, 1, length = 5)),
+  metric = "ROC")
+
+#show
+print(poly_svm_model)
+poly_svm_model$bestTune  #optimal
+poly_svm_model$results   #performance
+
+#test MSE
+svm_pred <- predict(poly_svm_model, diabetes)
+svm_error <- mean(svm_pred != diabetes$Outcome)
+cat("SVM Test Error Rate:", svm_error, "\n")
+
+
+```
+
+```{r}
+# (c)
+
+#radial SVM
+set.seed(123)
+rbf_svm_model <- train(Outcome ~ ., data = diabetes, method = "svmRadial", trControl = ctrl,
+  tuneGrid = expand.grid(C = seq(0.01, 1, length = 5), sigma = seq(0.01, 0.1, length = 5)),
+  metric = "ROC")
+
+#get results
+print(rbf_svm_model)
+rbf_svm_model$bestTune  #optimal parameters
+rbf_svm_model$results   #performance
+
+#test MSE
+rbf_pred <- predict(rbf_svm_model, diabetes)
+rbf_error <- mean(rbf_pred != diabetes$Outcome)
+cat("RBF Test Error Rate:", rbf_error, "\n")
+
+
+```
+
+```{r}
+
+# (e) compare
+roc_linear <- 0.83078
+sens_linear <- 0.89356
+spec_linear <- 0.54539
+
+roc_poly <- 0.85817
+sens_poly <- 0.90880
+spec_poly <- 0.58618
+
+roc_radial <- 0.88542
+sens_radial <- 0.90729
+spec_radial <- 0.65650
+
+sv_results <- data.frame(
+  Model = c("SVC", "SVM(Degree = 2)", "SVM(Radial)"),
+  ROC = c(roc_linear, roc_poly, roc_radial),
+  Sensitivity = c(sens_linear, sens_poly, sens_radial),
+  Specificity = c(spec_linear, spec_poly, spec_radial),
+  Misclassifcation_Rate = c(svc_error, svm_error, rbf_error)
+)
+
+# Print the results table
+print(sv_results)
+
+```
+
+```{r}
+
+### Question 3 ###
+
+#(c)
+
+library(factoextra) # For visualization
+
+#omit NA
+Hitters <- na.omit(Hitters)
+
+#only work with numeric
+Hitters_numeric <- Hitters[, sapply(Hitters, is.numeric)]
+
+#standardize
+data_standardized <- scale(Hitters_numeric)
+
+#Hierarchical clustering w/ Euclidean distance/complete linkage
+diss_matrix <- dist(data_standardized, method = "euclidean")
+hclust_model <- hclust(diss_matrix, method = "complete")
+
+#cut model create 2 clusters
+clusters <- cutree(hclust_model, k = 2)
+
+#get means
+cluster_summary <- aggregate(Hitters[, -c(1)], by = list(Hitters$Cluster), FUN = mean)
+
+salary_summary <- aggregate(Hitters$Salary, by = list(Hitters$Cluster), FUN = mean)
+
+print(cluster_summary)
+print(salary_summary)
+
+#dress down/up tree
+library(dendextend)
+
+#create dendogram
+dend <- as.dendrogram(hclust_model)
+
+#remove leafs
+dend <- dend %>% set("labels", rep("", length(labels(dend))))
+
+#plot
+plot(dend, 
+     main = "Hierarchical Clustering", 
+     xlab = "", 
+     ylab = "Height", 
+     sub = "",
+     cex = 0.8)
+```
+
+```{r}
+
+# (d)
+
+
+#K-means clustering w/ K = 2
+set.seed(123)  # For reproducibility
+kmeans_model <- kmeans(data_standardized, centers = 2)
+
+#add labels
+Hitters$Cluster_Kmeans <- as.factor(kmeans_model$cluster)
+
+#summarize means
+kmeans_summary <- aggregate(Hitters[, -c(1, 18)], by = list(Hitters$Cluster_Kmeans), FUN = mean)
+
+#summarize mean salaries
+salary_summary_kmeans <- aggregate(Hitters$Salary, by = list(Hitters$Cluster_Kmeans), FUN = mean)
+
+print(kmeans_summary)
+print(salary_summary_kmeans)
+
+
+```
