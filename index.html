@@ -16,7 +16,7 @@
       background: #fff;
     }
 
-    h1, h2 {
+    h1, h2, h3, h4 {
       font-weight: 600;
     }
 
@@ -25,9 +25,15 @@
       margin-bottom: 0.2em;
     }
 
+    h4 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+
     .subtitle {
       color: #555;
       margin-bottom: 2em;
+      font-size: 1.1rem;
     }
 
     .section {
@@ -35,20 +41,42 @@
     }
 
     .project {
-      margin-bottom: 1.5em;
+      margin-bottom: 2em;
     }
 
     .project-title {
       font-weight: 600;
+      font-size: 1.15rem;
+      color: #111;
+    }
+
+    .project-desc {
+      margin: 4px 0 8px 0;
+      color: #333;
     }
 
     .project-links a {
       margin-right: 12px;
       text-decoration: none;
       color: #0066cc;
+      font-size: 0.95rem;
     }
 
     .project-links a:hover {
+      text-decoration: underline;
+    }
+
+    .about-list {
+      padding-left: 20px;
+      margin-top: 5px;
+    }
+
+    .footer-links a {
+      text-decoration: none;
+      color: #0066cc;
+    }
+    
+    .footer-links a:hover {
       text-decoration: underline;
     }
 
@@ -70,11 +98,11 @@
   <div class="section">
     <h2>Projects</h2>
 
+    <!-- Project 1: Diabetes -->
     <div class="project">
       <div class="project-title">Diabetes Prediction</div>
-      <div>
-        Predictive modeling on a small clinical dataset; compared linear models,
-        Random Forest, and tuned XGBoost with attention to class imbalance.
+      <div class="project-desc">
+        Predictive modeling on a clinical dataset; evaluated the impact of outlier treatment and imputation, comparing traditional architectures with Random Forest and tuned XGBoost with attention to class imbalance.
       </div>
       <div class="project-links">
         <a href="#">Code</a>
@@ -83,14 +111,15 @@
       </div>
     </div>
 
+    <!-- Project 2: Google Web Analytics -->
     <div class="project">
-      <div class="project-title">Project Title</div>
-      <div>
-        One-sentence description of what problem you solved and how.
+      <div class="project-title">Google Web Analytics Project</div>
+      <div class="project-desc">
+        Conducted exploratory data analysis and behavioral segmentation to uncover actionable web traffic patterns and optimize business conversion metrics.
       </div>
       <div class="project-links">
-        <a href="#">Code</a>
-        <a href="#">Demo</a>
+        <!-- Direct clean URL to your hosted PDF -->
+        <a href="./Business%20Intelligence%20%26%20Analytics%20Projects/Google%20Web%20Analytics%20Project.pdf" target="_blank">View Report (PDF)</a>
       </div>
     </div>
 
@@ -100,17 +129,22 @@
     <h2>About</h2>
     <p>
       I love everything about the guitar and mostly played acoustic for 20 years. I thoroughly enjoy improving my rock climbing, soccer, Xbox and golf skills with friends.
-    <h4>Current Work</h4>
-      I'm currently active in completing the Data Science Professional certification via Coursera. 
-      Updating this page with my project work.
-      Deepening my knowledge/skills with AI and ML.
-      
     </p>
-    <p>
-      <a href="#">Resume</a> ·
-      <a href="#">LinkedIn</a> ·
-      <a href="#">GitHub</a> ·
-      <a href="#">Kaggle</a>
+    
+    <h4>Current Focus</h4>
+    <p>I am actively upgrading my toolkit by:</p>
+    <ul class="about-list">
+      <li>Completing the Data Science Professional certification via Coursera.</li>
+      <li>Updating this page with advanced project work.</li>
+      <li>Deepening my practical knowledge in machine learning architectures and data pipelines.</li>
+    </ul>
+    
+    <p class="footer-links" style="margin-top: 2em;">
+      <!-- Replace the # with your actual profile links -->
+      <a href="#" target="_blank">Resume</a> ·
+      <a href="#" target="_blank">LinkedIn</a> ·
+      <a href="https://github.com/Achilles-88" target="_blank">GitHub</a> ·
+      <a href="#" target="_blank">Kaggle</a>
     </p>
   </div>
 
