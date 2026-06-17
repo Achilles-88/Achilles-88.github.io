@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diabetes Prediction Project | Benny Frisella</title>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #111;
+      line-height: 1.6;
+      background: #fff;
+    }
+
+    h1, h2, h3 {
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.2em;
+    }
+
+    h2 {
+      border-bottom: 1px solid #eaecef;
+      padding-bottom: 0.3em;
+      margin-top: 1.8em;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2em;
+      text-decoration: none;
+      color: #0066cc;
+      font-weight: 500;
+    }
+
+    .project-assets {
+      margin: 1.5em 0;
+      background: #f6f8fa;
+      padding: 20px;
+      border-radius: 6px;
+      border: 1px solid #e1e4e8;
+    }
+
+    .asset-link {
+      display: block;
+      margin: 8px 0;
+      text-decoration: none;
+      color: #0066cc;
+      font-weight: 600;
+    }
+
+    .asset-link:hover {
+      text-decoration: underline;
+    }
+
+    .tech-badge {
+      display: inline-block;
+      background: #f1f1f1;
+      color: #333;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      margin-right: 5px;
+      font-weight: 500;
+    }
+
+    footer {
+      margin-top: 4em;
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+  <a class="back-link" href="../../index.html">← Back to Main Portfolio</a>
+
+  <h1>Predicting Diabetes Model Analysis</h1>
+  
+  <div>
+    <span class="tech-badge">R Markdown</span>
+    <span class="tech-badge">XGBoost</span>
+    <span class="tech-badge">Random Forest</span>
+    <span class="tech-badge">EDA</span>
+  </div>
+
+  <div class="project-assets">
+    <h3>Project Deliverables</h3>
+    <a class="asset-link" href="./Predicting%20Diabetes%20Report.pdf" target="_blank">📊 Read the Technical Report (PDF)</a>
+    <a class="asset-link" href="./Predicting%20Diabetes%20Code.Rmd" target="_blank">💻 View Source Code (Rmd)</a>
+  </div>
+
+  <h2>Executive Summary</h2>
+  <p>
+    This project focuses on predictive modeling utilizing a clinical diabetes dataset. A significant emphasis was placed on the foundational data integrity stages, specifically evaluating how different missing data imputation strategies and outlier treatments fundamentally altered downstream model accuracy.
+  </p>
+
+  <h2>Methodology & Model Performance</h2>
+  <p>
+    The workflow involved benchmarking traditional architectures against robust ensemble methods. To address severe class imbalance within the clinical features, targeted adjustments and hyperparameter tuning were applied to both Random Forest and XGBoost classifiers. 
+  </p>
+  <p>
+    The final analysis evaluates the tradeoffs between model sensitivity (recalling true positive diabetic instances) and overall precision to provide a business-ready clinical decision framework.
+  </p>
+
+  <footer>
+    © 2026 Benny Frisella · Portfolio Project
+  </footer>
+
+</body>
+</html>
